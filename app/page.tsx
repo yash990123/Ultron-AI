@@ -1,6 +1,6 @@
 "use client";
 
-import { type ChangeEvent, useMemo, useRef, useState } from "react";
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 
 type RiskLevel = "low" | "high";
 type Status = "idle" | "processing" | "awaiting_approval" | "paid" | "rejected" | "error";
@@ -89,6 +89,24 @@ export default function Home() {
   const [isDragging, setIsDragging] = useState(false);
   const [showTrustedVendors, setShowTrustedVendors] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const revealItems = Array.from(document.querySelectorAll<HTMLElement>("[data-reveal]"));
+    if (!("IntersectionObserver" in window)) {
+      revealItems.forEach((item) => item.classList.add("is-visible"));
+      return;
+    }
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("is-visible");
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: "0px 0px -40px" });
+    revealItems.forEach((item) => observer.observe(item));
+    return () => observer.disconnect();
+  }, []);
 
   const statusCopy = useMemo(() => ({
     idle: { label: "Ready to process", detail: "Paste a signal or choose a demo invoice", className: "neutral" },
@@ -248,7 +266,7 @@ export default function Home() {
         <div className="nav-right"><span className="live-dot" /> Systems nominal <span className="avatar">OP</span></div>
       </nav>
 
-      <section className="hero">
+      <section className="hero" data-reveal="hero">
         <div className="eyebrow"><span>●</span> AUTONOMOUS WORKFLOW ENGINE</div>
         <h1>From messy invoice<br /><em>to verified action.</em></h1>
         <p className="hero-copy">ULTRON extracts the signal, checks the policy, and moves work forward — pausing only when an operator should decide.</p>
@@ -257,7 +275,7 @@ export default function Home() {
         <div className="hero-orbit" aria-hidden="true"><span className="orbit-core">Y</span><span className="orbit-ring ring-one" /><span className="orbit-ring ring-two" /><span className="orbit-signal signal-one" /><span className="orbit-signal signal-two" /></div>
       </section>
 
-      <section className="workspace" id="workspace">
+      <section className="workspace" id="workspace" data-reveal="workspace">
         <div className="workspace-header"><div><span className="section-kicker">LIVE WORKFLOW <span className="section-code">/ 00A7</span></span><h2>Invoice command center</h2><p className="workspace-subtitle">{statusCopy.detail}</p></div><div className="status-wrap"><span className={`status-pill ${statusCopy.className}`}><span className="status-dot" />{statusCopy.label}</span><span className="workspace-meta">MOCK CONNECTORS · SAFE MODE</span></div></div>
         <div className="workflow-rail">
           {["Ingest", "Extract", "Normalize", "Plan", "Tool calls", "Guardrails / HITL", "Execute", "Audit"].map((step, index) => {
@@ -266,13 +284,13 @@ export default function Home() {
             return <div className={`rail-step ${done ? "done" : ""} ${active ? "active" : ""}`} key={step}><span className="rail-number">{done ? <Icon name="check" /> : `0${index + 1}`}</span><span>{step}</span>{index < 7 && <span className="rail-line" />}</div>;
           })}
         </div>
-        <div className="operator-strip" aria-label="Operator console metrics">
+        <div className="operator-strip" aria-label="Operator console metrics" data-reveal="strip">
           <div className="operator-metric"><span className="metric-icon cyan"><Icon name="spark" /></span><div><span>AGENT MODE</span><strong>Governed autonomy</strong></div><i className="metric-live">LIVE</i></div>
           <div className="operator-metric"><span className="metric-icon violet"><Icon name="shield" /></span><div><span>POLICY ENGINE</span><strong>3 guardrails active</strong></div><i>LOCKED</i></div>
           <div className="operator-metric"><span className="metric-icon green"><Icon name="check" /></span><div><span>CONNECTORS</span><strong>Mock / Gemini ready</strong></div><i>ONLINE</i></div>
           <div className="operator-metric"><span className="metric-icon amber"><Icon name="clock" /></span><div><span>HUMAN GATE</span><strong>Impact-aware pause</strong></div><i>ARMED</i></div>
         </div>
-        <div className="trusted-registry">
+        <div className="trusted-registry" data-reveal="registry">
           <div><span className="section-kicker">BUSINESS VERIFICATION</span><strong>Trusted-vendor registry</strong><span>Operational match only · not cryptographic authenticity</span></div>
           <button type="button" className="registry-toggle" onClick={() => setShowTrustedVendors((visible) => !visible)} aria-expanded={showTrustedVendors}>{showTrustedVendors ? "Hide records" : "View records"} <Icon name="arrow" /></button>
           {showTrustedVendors && <div className="registry-list">{TRUSTED_VENDORS.map((vendor) => <span key={vendor}><Icon name="check" />{vendor}</span>)}</div>}
@@ -286,7 +304,7 @@ export default function Home() {
 
         <div className="console-caption"><span>OPERATIONS DECK</span><span>SESSION / INVOICE-LOCAL-01</span><span className="caption-line" /></div>
         <div className="grid">
-          <section className="card input-card">
+          <section className="card input-card" data-reveal="card">
             <div className="card-head"><div><span className="section-kicker">01 · INGEST</span><h3>Bring in an invoice</h3></div><span className="input-badge"><Icon name="upload" /> text signal</span></div>
             <div className="sample-row"><span>Start with a signal</span><div className="sample-controls"><button className={`sample-button ${invoiceText === EASY_INVOICE ? "selected" : ""}`} onClick={() => loadSample("easy")} aria-pressed={invoiceText === EASY_INVOICE}><span className="sample-indicator safe" />Trusted vendor <span className="sample-arrow">↗</span></button><button className={`sample-button risky-sample ${invoiceText === RISKY_INVOICE ? "selected" : ""}`} onClick={() => loadSample("risky")} aria-pressed={invoiceText === RISKY_INVOICE}><span className="sample-indicator risky" />Risky vendor <span className="sample-arrow">↗</span></button></div></div>
             <input ref={fileInputRef} className="visually-hidden" type="file" accept=".pdf,.txt,.csv,.json,application/pdf,text/plain,text/csv,application/json" onChange={handleFileChange} />
@@ -301,7 +319,7 @@ export default function Home() {
             {error && <div className="error-banner"><Icon name="x" />{error}</div>}
           </section>
 
-          <section className="card result-card">
+          <section className="card result-card" data-reveal="card">
             <div className="card-head"><div><span className="section-kicker">02 · NORMALIZE</span><h3>Execution contract</h3></div>{invoice && <span className="confidence"><span className="confidence-ring">{invoice.confidence}%</span> confidence</span>}</div>
             <div className="tabs"><button className={activeTab === "input" ? "selected" : ""} onClick={() => setActiveTab("input")}>Overview</button><button className={activeTab === "normalized" ? "selected" : ""} onClick={() => setActiveTab("normalized")} disabled={!invoice}>Normalized JSON</button></div>
             {!invoice ? <div className="empty-state"><div className="empty-icon"><Icon name="spark" /></div><strong>Your contract appears here</strong><span>Process an invoice to see extracted entities, policy checks, and the next safe action.</span><span className="empty-hint">Try the trusted sample for an instant pass.</span></div> : activeTab === "normalized" ? <pre className="json-view">{JSON.stringify(invoice, null, 2)}</pre> : <div className="details">
@@ -313,8 +331,8 @@ export default function Home() {
         </div>
 
         <div className="lower-grid">
-          <section className="card approval-card"><div className="card-head"><div><span className="section-kicker">03 · CONTROL</span><h3>Approval boundary</h3></div><span className="boundary-badge"><Icon name="shield" /> impact gate</span></div>{!invoice ? <div className="approval-empty">The agent will pause here when policy requires a human decision.</div> : <div className={`approval-body ${status === "paid" ? "complete" : ""} ${invoice.authenticity.status === "fake" ? "blocked-risk" : invoice.riskLevel === "high" ? "high-risk" : "safe-risk"}`}><div className="approval-message"><div className="approval-symbol">{status === "paid" ? <Icon name="check" /> : invoice.authenticity.status === "fake" ? <Icon name="x" /> : invoice.riskLevel === "low" ? <Icon name="shield" /> : <Icon name="clock" />}</div><div><strong>{status === "paid" ? "Approved and executed" : invoice.authenticity.status === "fake" ? "Blocked: authenticity failed" : status === "processing" && invoice.riskLevel === "low" ? "Auto-approval in progress" : invoice.riskLevel === "low" ? "Safe to auto-approve" : "This payment needs your approval"}</strong><span>{status === "paid" ? "The simulated transfer completed successfully." : invoice.authenticity.status === "fake" ? invoice.authenticity.reason : invoice.authenticity.status === "needs_review" ? "Unknown vendor. Human approval is required before any simulated payment." : invoice.riskLevel === "low" ? "Trusted vendor and amount threshold passed. No manual action is needed." : "No external system is changed until you confirm the action below."}</span></div></div>{status === "awaiting_approval" && invoice.authenticity.status !== "fake" && invoice.riskLevel === "high" && <button className="approve-button" onClick={approvePayment} disabled={!canApprove}>Approve & simulate payment <Icon name="arrow" /></button>}</div>}</section>
-          <section className="card audit-card"><div className="card-head"><div><span className="section-kicker">04 · EVIDENCE</span><h3>Audit trail</h3></div><span className="audit-count">{audit.length} events</span></div><div className="timeline">{audit.map((event) => <div className="timeline-item" key={event.id}><span className={`timeline-dot ${event.tone}`} /> <div><strong>{event.label}</strong><span>{event.detail}</span></div><time>{event.time}</time></div>)}</div></section>
+          <section className="card approval-card" data-reveal="card"><div className="card-head"><div><span className="section-kicker">03 · CONTROL</span><h3>Approval boundary</h3></div><span className="boundary-badge"><Icon name="shield" /> impact gate</span></div>{!invoice ? <div className="approval-empty">The agent will pause here when policy requires a human decision.</div> : <div className={`approval-body ${status === "paid" ? "complete" : ""} ${invoice.authenticity.status === "fake" ? "blocked-risk" : invoice.riskLevel === "high" ? "high-risk" : "safe-risk"}`}><div className="approval-message"><div className="approval-symbol">{status === "paid" ? <Icon name="check" /> : invoice.authenticity.status === "fake" ? <Icon name="x" /> : invoice.riskLevel === "low" ? <Icon name="shield" /> : <Icon name="clock" />}</div><div><strong>{status === "paid" ? "Approved and executed" : invoice.authenticity.status === "fake" ? "Blocked: authenticity failed" : status === "processing" && invoice.riskLevel === "low" ? "Auto-approval in progress" : invoice.riskLevel === "low" ? "Safe to auto-approve" : "This payment needs your approval"}</strong><span>{status === "paid" ? "The simulated transfer completed successfully." : invoice.authenticity.status === "fake" ? invoice.authenticity.reason : invoice.authenticity.status === "needs_review" ? "Unknown vendor. Human approval is required before any simulated payment." : invoice.riskLevel === "low" ? "Trusted vendor and amount threshold passed. No manual action is needed." : "No external system is changed until you confirm the action below."}</span></div></div>{status === "awaiting_approval" && invoice.authenticity.status !== "fake" && invoice.riskLevel === "high" && <button className="approve-button" onClick={approvePayment} disabled={!canApprove}>Approve & simulate payment <Icon name="arrow" /></button>}</div>}</section>
+          <section className="card audit-card" data-reveal="card"><div className="card-head"><div><span className="section-kicker">04 · EVIDENCE</span><h3>Audit trail</h3></div><span className="audit-count">{audit.length} events</span></div><div className="timeline">{audit.map((event) => <div className="timeline-item" key={event.id}><span className={`timeline-dot ${event.tone}`} /> <div><strong>{event.label}</strong><span>{event.detail}</span></div><time>{event.time}</time></div>)}</div></section>
         </div>
       </section>
 

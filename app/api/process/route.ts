@@ -12,16 +12,38 @@ type Invoice = {
   riskLevel: "low" | "high";
   riskReasons: string[];
   confidence: number;
+  authenticity: Authenticity;
+};
+
+type AuthenticityStatus = "real" | "fake" | "needs_review";
+type Authenticity = {
+  status: AuthenticityStatus;
+  label: "Real" | "Fake" | "Needs review";
+  reason: string;
 };
 
 const trustedVendors = ["acme cloud services", "orbit office supplies", "vertex logistics"];
-const invoiceRejectedMessage = "Invoice rejected: the invoice is fake, incomplete, or from an unverified vendor.";
+const invoiceRejectedMessage = "Invoice rejected: authenticity checks found a fake or incomplete invoice.";
 
-function isValidatedInvoice(invoice: Invoice) {
-  return invoice.vendor !== "Unknown vendor"
+function assessAuthenticity(invoice: Omit<Invoice, "authenticity">): Authenticity {
+  const missingIdentity: string[] = [];
+  if (invoice.vendor === "Unknown vendor") missingIdentity.push("vendor is missing");
+  if (invoice.invoiceNumber === "Not specified") missingIdentity.push("invoice number is missing");
+  if (!(invoice.amount > 0)) missingIdentity.push("a payable amount was not found");
+  if (missingIdentity.length) {
+    return { status: "fake", label: "Fake", reason: `Business verification failed: ${missingIdentity.join(", ")}.` };
+  }
+  if (!invoice.trustedVendor) {
+    return { status: "needs_review", label: "Needs review", reason: "Vendor identity is not present in the trusted-vendor registry." };
+  }
+  return { status: "real", label: "Real", reason: "Trusted vendor record matched and invoice identity and amount are consistent." };
+}
+
+function isPayableInvoice(invoice: Invoice) {
+  const serverAuthenticity = assessAuthenticity(invoice);
+  return serverAuthenticity.status !== "fake"
     && invoice.invoiceNumber !== "Not specified"
-    && invoice.amount > 0
-    && invoice.trustedVendor;
+    && invoice.amount > 0;
 }
 
 function parseMoney(text: string) {
@@ -29,8 +51,8 @@ function parseMoney(text: string) {
   return match ? Number(match[1].replace(/,/g, "")) : 0;
 }
 
-function parseInvoice(text: string): Invoice {
-  const vendor = text.match(/vendor\s*:\s*(.+)/i)?.[1]?.trim() || "Unknown vendor";
+function parseInvoice(text: string): Omit<Invoice, "authenticity"> {
+  const vendor = text.match(/vendor[ \t]*:[ \t]*([^\r\n]+)/i)?.[1]?.trim() || "Unknown vendor";
   const invoiceNumber = text.match(/invoice\s*#?\s*:\s*([^\s]+)/i)?.[1]?.trim() || "Not specified";
   const dueDate = text.match(/due date\s*:\s*(.+)/i)?.[1]?.trim() || "";
   const purchaseOrder = text.match(/purchase order\s*:\s*([^\s]+)/i)?.[1]?.trim() || null;
@@ -40,7 +62,7 @@ function parseInvoice(text: string): Invoice {
   if (!trustedVendor) riskReasons.push("vendor is not on the trusted list");
   if (amount > 10000) riskReasons.push("amount exceeds $10,000");
   if (!purchaseOrder) riskReasons.push("purchase order is missing");
-  return {
+  const invoice: Omit<Invoice, "authenticity"> = {
     invoiceNumber,
     vendor,
     amount,
@@ -49,10 +71,15 @@ function parseInvoice(text: string): Invoice {
     purchaseOrder,
     lineItems: [{ description: text.split("\n").find((line) => line.includes("—"))?.split("—")[0]?.trim() || "Invoice services", quantity: 1, unitPrice: amount }],
     trustedVendor,
-    riskLevel: riskReasons.length ? "high" : "low",
+    riskLevel: (riskReasons.length ? "high" : "low") as "low" | "high",
     riskReasons,
     confidence: amount && vendor !== "Unknown vendor" ? 98 : 72
   };
+  return invoice;
+}
+
+function withAuthenticity(invoice: Omit<Invoice, "authenticity">): Invoice {
+  return { ...invoice, authenticity: assessAuthenticity(invoice) };
 }
 
 async function extractWithGemini(text: string) {
@@ -82,7 +109,7 @@ export async function POST(request: Request) {
       if (!invoice || body.approved !== true) {
         return NextResponse.json({ error: "Payment requires an explicit approved workflow." }, { status: 403 });
       }
-      if (!isValidatedInvoice(invoice)) {
+      if (!isPayableInvoice(invoice)) {
         return NextResponse.json({ error: invoiceRejectedMessage }, { status: 422 });
       }
       return NextResponse.json({ transactionId: `SIM-${Date.now().toString(36).toUpperCase()}`, mode: "simulated" });
@@ -92,23 +119,31 @@ export async function POST(request: Request) {
     const gemini = await extractWithGemini(text).catch(() => null);
     const invoice = parseInvoice(text);
     if (gemini) {
-      const extracted = { ...invoice, ...gemini, amount: Number(gemini.amount) || invoice.amount };
-      extracted.trustedVendor = trustedVendors.includes(String(extracted.vendor).toLowerCase());
+      const extractedBase = { ...invoice, ...gemini, amount: Number(gemini.amount) || invoice.amount };
+      const extracted = {
+        ...extractedBase,
+        vendor: String(extractedBase.vendor || "Unknown vendor").trim(),
+        invoiceNumber: String(extractedBase.invoiceNumber || "Not specified").trim(),
+        purchaseOrder: extractedBase.purchaseOrder ? String(extractedBase.purchaseOrder).trim() : null,
+        trustedVendor: trustedVendors.includes(String(extractedBase.vendor || "").toLowerCase().trim())
+      };
       extracted.riskReasons = [
         ...(!extracted.trustedVendor ? ["vendor is not on the trusted list"] : []),
         ...(extracted.amount > 10000 ? ["amount exceeds $10,000"] : []),
         ...(!extracted.purchaseOrder ? ["purchase order is missing"] : [])
       ];
       extracted.riskLevel = extracted.riskReasons.length ? "high" : "low";
-      if (!isValidatedInvoice(extracted)) {
-        return NextResponse.json({ error: invoiceRejectedMessage }, { status: 422 });
+      const finalized = withAuthenticity(extracted);
+      if (finalized.authenticity.status === "fake") {
+        return NextResponse.json({ error: invoiceRejectedMessage, authenticity: finalized.authenticity, invoice: finalized, extraction: "gemini" }, { status: 422 });
       }
-      return NextResponse.json({ invoice: extracted, extraction: "gemini" });
+      return NextResponse.json({ invoice: finalized, extraction: "gemini" });
     }
-    if (!isValidatedInvoice(invoice)) {
-      return NextResponse.json({ error: invoiceRejectedMessage }, { status: 422 });
+    const finalized = withAuthenticity(invoice);
+    if (finalized.authenticity.status === "fake") {
+      return NextResponse.json({ error: invoiceRejectedMessage, authenticity: finalized.authenticity, invoice: finalized, extraction: "mock" }, { status: 422 });
     }
-    return NextResponse.json({ invoice, extraction: "mock" });
+    return NextResponse.json({ invoice: finalized, extraction: "mock" });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid request." }, { status: 500 });
   }

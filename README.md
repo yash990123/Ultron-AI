@@ -26,5 +26,6 @@ When configured, `POST /api/process` asks Gemini for the extraction contract and
 ## Workflow boundaries
 
 - Trusted vendors are `Acme Cloud Services`, `Orbit Office Supplies`, and `Vertex Logistics`.
-- Only validated invoices from trusted vendors enter the workflow. Fake, incomplete, or unverified invoices are rejected with a visible error; trusted invoices over `$10,000` or missing a purchase order require approval.
+- Business verification classifies processed invoices as **Real**, **Needs review**, or **Fake**. A Real invoice matches a trusted vendor record and has consistent identity/amount fields; an unknown vendor becomes Needs review and pauses at HITL; Fake or incomplete invoices are blocked with a visible reason. This is an operational business check, not cryptographic authenticity.
+- The console mirrors the agent loop: ingest -> extract -> normalize -> plan -> tool calls -> guardrails/HITL -> execute -> audit. Real low-risk invoices auto-approve, while high-value, incomplete-policy, or Needs review invoices require approval.
 - Payment is a simulated transaction and is only available through the approval action.

@@ -196,6 +196,23 @@ body::before {
 .sub-value { color: #7d98a1; }
 .trust-tag.trusted { color: #73f0d2; background: rgba(70,224,193,.12); border: 1px solid rgba(70,224,193,.2); }
 .trust-tag.unverified { color: #ffc477; background: rgba(242,173,91,.12); border: 1px solid rgba(242,173,91,.22); }
+.trust-tag.real { color: #73f0d2; background: rgba(70,224,193,.12); border: 1px solid rgba(70,224,193,.2); }
+.trust-tag.needs_review { color: #ffc477; background: rgba(242,173,91,.12); border: 1px solid rgba(242,173,91,.22); }
+.trust-tag.fake { color: #ff8da0; background: rgba(255,111,134,.12); border: 1px solid rgba(255,111,134,.24); }
+.policy-icon.real { color: var(--green); background: rgba(70,224,193,.12); }
+.policy-icon.needs_review { color: var(--amber); background: rgba(242,173,91,.12); }
+.policy-icon.fake { color: var(--red); background: rgba(255,111,134,.12); }
+.blocked-risk { background: rgba(88, 27, 48, .32); border-color: rgba(255,111,134,.42); }
+.blocked-risk .approval-symbol { background: rgba(255,111,134,.15); color: #ff8da0; }
+.trusted-registry { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 15px; align-items: center; margin: 0 0 15px; padding: 12px 14px; border: 1px solid rgba(157,131,255,.22); border-radius: 9px; background: linear-gradient(105deg, rgba(23,22,48,.74), rgba(10,26,37,.72)); }
+.trusted-registry > div { display: flex; flex-direction: column; gap: 3px; }
+.trusted-registry strong { color: #eaf8fb; font: 600 12px "Space Grotesk"; }
+.trusted-registry > div > span:last-child { color: #748f9a; font-size: 9px; }
+.registry-toggle { display: inline-flex; align-items: center; gap: 8px; border: 1px solid rgba(157,131,255,.3); border-radius: 5px; padding: 8px 10px; background: rgba(157,131,255,.08); color: #c8baff; font: 9px "DM Mono"; text-transform: uppercase; letter-spacing: .06em; }
+.registry-toggle svg { width: 12px; }
+.registry-list { grid-column: 1 / -1; display: flex !important; flex-direction: row !important; flex-wrap: wrap; gap: 8px 15px; margin-top: 7px; padding-top: 10px; border-top: 1px solid rgba(157,131,255,.15); }
+.registry-list span { display: inline-flex; align-items: center; gap: 5px; color: #a9d9db; font: 9px "DM Mono"; }
+.registry-list svg { width: 12px; color: var(--green); }
 .metric-grid { border-color: #20394a; }
 .metric-grid > div + div { border-color: #20394a; }
 .metric-grid strong, .metric-grid .amount { color: #e9f7f8; }

@@ -4,6 +4,7 @@ import { type ChangeEvent, useMemo, useRef, useState } from "react";
 
 type RiskLevel = "low" | "high";
 type Status = "idle" | "processing" | "awaiting_approval" | "paid" | "rejected" | "error";
+type AuthenticityStatus = "real" | "fake" | "needs_review";
 
 type Invoice = {
   invoiceNumber: string;
@@ -17,6 +18,11 @@ type Invoice = {
   riskLevel: RiskLevel;
   riskReasons: string[];
   confidence: number;
+  authenticity: {
+    status: AuthenticityStatus;
+    label: "Real" | "Fake" | "Needs review";
+    reason: string;
+  };
 };
 
 type AuditEvent = {
@@ -44,6 +50,7 @@ Due date: October 19, 2024
 Emergency data migration and recovery services — 1 × $18,450.00
 Total due: USD $18,450.00
 Payment terms: wire transfer`;
+const TRUSTED_VENDORS = ["Acme Cloud Services", "Orbit Office Supplies", "Vertex Logistics"];
 
 const initialAudit: AuditEvent[] = [
   { id: "start", label: "Workflow ready", detail: "Waiting for an invoice signal", time: "now", tone: "done" }
@@ -80,6 +87,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<"input" | "normalized">("input");
   const [uploadedFile, setUploadedFile] = useState<{ name: string; size: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [showTrustedVendors, setShowTrustedVendors] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const statusCopy = useMemo(() => ({
@@ -94,7 +102,7 @@ export default function Home() {
     if (status === "processing") return { label: "Reasoning", detail: "Extracting entities and evaluating guardrails", tone: "active" };
     if (status === "awaiting_approval") return { label: "Handoff ready", detail: "Decision packet prepared for the operator", tone: "attention" };
     if (status === "paid") return { label: "Task complete", detail: "Action verified and written to the ledger", tone: "complete" };
-    if (status === "error") return { label: "Needs attention", detail: "The agent stopped before execution", tone: "attention" };
+    if (status === "error" || status === "rejected") return { label: "Needs attention", detail: "The agent stopped before execution", tone: "attention" };
     return { label: "Listening", detail: "Ready for an invoice signal", tone: "idle" };
   }, [status]);
 
@@ -117,8 +125,9 @@ export default function Home() {
       addAudit("Payment executed", `Simulated ${money(invoiceToPay.amount, invoiceToPay.currency)} transfer to ${invoiceToPay.vendor}`);
       addAudit("Result verified", `Transaction ${data.transactionId} recorded in the audit ledger`);
     } catch (err) {
-      setStatus("error");
-      setError(err instanceof Error ? err.message : "Payment simulation failed.");
+      const message = err instanceof Error ? err.message : "Payment simulation failed.";
+      setStatus(message.startsWith("Invoice rejected:") ? "rejected" : "error");
+      setError(message);
       addAudit("Payment blocked", "The execution boundary returned an error", "warn");
     }
   }
@@ -136,11 +145,24 @@ export default function Home() {
         body: JSON.stringify({ text: invoiceText })
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "The agent could not process this invoice.");
+      if (data.invoice) {
+        setInvoice(data.invoice);
+        setActiveTab("input");
+      }
+      if (!response.ok) {
+        const authenticity = data.authenticity || data.invoice?.authenticity;
+        if (authenticity?.status) {
+          setAudit((events) => [...events, { id: `${Date.now()}-authenticity`, label: "Authenticity assessed", detail: `${authenticity.label}: ${authenticity.reason}`, time: timeNow(), tone: "warn" }]);
+        }
+        throw new Error(data.error || "The agent could not process this invoice.");
+      }
       setInvoice(data.invoice);
       addAudit("Fields extracted", `${data.invoice.vendor} · ${money(data.invoice.amount, data.invoice.currency)}`);
-      addAudit("Policy assessed", data.invoice.riskLevel === "low" ? "Trusted vendor and low-value threshold passed" : `${data.invoice.riskReasons.length} risk signal${data.invoice.riskReasons.length === 1 ? "" : "s"} found`, data.invoice.riskLevel === "low" ? "done" : "warn");
-      if (data.invoice.riskLevel === "low") {
+      addAudit("Normalization complete", "Structured invoice contract prepared for the agent plan");
+      addAudit("Tool calls staged", "Trusted-vendor lookup and payment simulator are ready");
+      addAudit("Authenticity assessed", `${data.invoice.authenticity.label}: ${data.invoice.authenticity.reason}`, data.invoice.authenticity.status === "real" ? "done" : "warn");
+      addAudit("Guardrails evaluated", data.invoice.riskLevel === "low" ? "Trusted vendor and low-value threshold passed" : `${data.invoice.riskReasons.length} risk signal${data.invoice.riskReasons.length === 1 ? "" : "s"} found`, data.invoice.riskLevel === "low" ? "done" : "warn");
+      if (data.invoice.authenticity.status === "real" && data.invoice.riskLevel === "low") {
         setStatus("awaiting_approval");
         addAudit("Auto-approval granted", "Trusted vendor and policy threshold passed", "active");
         await executePayment(data.invoice, false);
@@ -153,7 +175,7 @@ export default function Home() {
       const rejected = message.startsWith("Invoice rejected:");
       setStatus(rejected ? "rejected" : "error");
       setError(message);
-      addAudit(rejected ? "Invoice rejected" : "Workflow stopped", rejected ? message : "Unable to produce a normalized invoice", "warn");
+      if (!rejected) addAudit("Workflow stopped", "Unable to produce a normalized invoice", "warn");
     }
   }
 
@@ -237,10 +259,10 @@ export default function Home() {
       <section className="workspace">
         <div className="workspace-header"><div><span className="section-kicker">LIVE WORKFLOW <span className="section-code">/ 00A7</span></span><h2>Invoice command center</h2><p className="workspace-subtitle">{statusCopy.detail}</p></div><div className="status-wrap"><span className={`status-pill ${statusCopy.className}`}><span className="status-dot" />{statusCopy.label}</span><span className="workspace-meta">MOCK CONNECTORS · SAFE MODE</span></div></div>
         <div className="workflow-rail">
-          {["Ingest", "Extract", "Assess", "Approve", "Execute"].map((step, index) => {
-            const done = (index === 0 && status !== "idle") || (index === 1 && invoice) || (index === 2 && invoice) || (index === 3 && status === "paid") || (index === 4 && status === "paid");
-            const active = (index === 0 && status === "idle") || (index === 1 && status === "processing") || (index === 2 && invoice && status !== "paid") || (index === 3 && status === "awaiting_approval") || (index === 4 && status === "paid");
-            return <div className={`rail-step ${done ? "done" : ""} ${active ? "active" : ""}`} key={step}><span className="rail-number">{done ? <Icon name="check" /> : `0${index + 1}`}</span><span>{step}</span>{index < 4 && <span className="rail-line" />}</div>;
+          {["Ingest", "Extract", "Normalize", "Plan", "Tool calls", "Guardrails / HITL", "Execute", "Audit"].map((step, index) => {
+            const done = (index === 0 && status !== "idle") || (index >= 1 && index <= 4 && invoice) || (index === 5 && (status === "awaiting_approval" || status === "paid" || status === "rejected")) || (index === 6 && status === "paid") || (index === 7 && status !== "idle");
+            const active = (index === 0 && status === "idle") || (index === 1 && status === "processing" && !invoice) || (index >= 2 && index <= 4 && status === "processing") || (index === 5 && status === "awaiting_approval") || (index === 6 && status === "paid") || (index === 7 && (status === "paid" || status === "rejected"));
+            return <div className={`rail-step ${done ? "done" : ""} ${active ? "active" : ""}`} key={step}><span className="rail-number">{done ? <Icon name="check" /> : `0${index + 1}`}</span><span>{step}</span>{index < 7 && <span className="rail-line" />}</div>;
           })}
         </div>
         <div className="operator-strip" aria-label="Operator console metrics">
@@ -248,6 +270,11 @@ export default function Home() {
           <div className="operator-metric"><span className="metric-icon violet"><Icon name="shield" /></span><div><span>POLICY ENGINE</span><strong>3 guardrails active</strong></div><i>LOCKED</i></div>
           <div className="operator-metric"><span className="metric-icon green"><Icon name="check" /></span><div><span>CONNECTORS</span><strong>Mock / Gemini ready</strong></div><i>ONLINE</i></div>
           <div className="operator-metric"><span className="metric-icon amber"><Icon name="clock" /></span><div><span>HUMAN GATE</span><strong>Impact-aware pause</strong></div><i>ARMED</i></div>
+        </div>
+        <div className="trusted-registry">
+          <div><span className="section-kicker">BUSINESS VERIFICATION</span><strong>Trusted-vendor registry</strong><span>Operational match only · not cryptographic authenticity</span></div>
+          <button type="button" className="registry-toggle" onClick={() => setShowTrustedVendors((visible) => !visible)} aria-expanded={showTrustedVendors}>{showTrustedVendors ? "Hide records" : "View records"} <Icon name="arrow" /></button>
+          {showTrustedVendors && <div className="registry-list">{TRUSTED_VENDORS.map((vendor) => <span key={vendor}><Icon name="check" />{vendor}</span>)}</div>}
         </div>
         <div className={`agent-command-bar ${agentState.tone}`} aria-live="polite">
           <div className="agent-orb"><span /><span /><span /></div>
@@ -277,15 +304,15 @@ export default function Home() {
             <div className="card-head"><div><span className="section-kicker">02 · NORMALIZE</span><h3>Execution contract</h3></div>{invoice && <span className="confidence"><span className="confidence-ring">{invoice.confidence}%</span> confidence</span>}</div>
             <div className="tabs"><button className={activeTab === "input" ? "selected" : ""} onClick={() => setActiveTab("input")}>Overview</button><button className={activeTab === "normalized" ? "selected" : ""} onClick={() => setActiveTab("normalized")} disabled={!invoice}>Normalized JSON</button></div>
             {!invoice ? <div className="empty-state"><div className="empty-icon"><Icon name="spark" /></div><strong>Your contract appears here</strong><span>Process an invoice to see extracted entities, policy checks, and the next safe action.</span><span className="empty-hint">Try the trusted sample for an instant pass.</span></div> : activeTab === "normalized" ? <pre className="json-view">{JSON.stringify(invoice, null, 2)}</pre> : <div className="details">
-              <div className="vendor-row"><div className="vendor-logo">{invoice.vendor.slice(0, 1)}</div><div><span className="muted-label">VENDOR</span><strong>{invoice.vendor}</strong><span className="sub-value">{invoice.invoiceNumber}</span></div><span className={`trust-tag ${invoice.trustedVendor ? "trusted" : "unverified"}`}>{invoice.trustedVendor ? "Trusted" : "Unverified"}</span></div>
+              <div className="vendor-row"><div className="vendor-logo">{invoice.vendor.slice(0, 1)}</div><div><span className="muted-label">VENDOR</span><strong>{invoice.vendor}</strong><span className="sub-value">{invoice.invoiceNumber}</span></div><span className={`trust-tag ${invoice.authenticity.status}`}>{invoice.authenticity.label}</span></div>
               <div className="metric-grid"><div><span className="muted-label">TOTAL DUE</span><strong className="amount">{money(invoice.amount, invoice.currency)}</strong></div><div><span className="muted-label">DUE DATE</span><strong>{invoice.dueDate || "Not specified"}</strong></div><div><span className="muted-label">PURCHASE ORDER</span><strong>{invoice.purchaseOrder || "Not found"}</strong></div></div>
-              <div className="policy-box"><div className={`policy-icon ${invoice.riskLevel}`}><Icon name={invoice.riskLevel === "low" ? "shield" : "clock"} /></div><div><strong>{invoice.riskLevel === "low" ? "Policy checks passed" : "Human review required"}</strong><span>{invoice.riskLevel === "low" ? "Trusted vendor · amount within auto-approve threshold" : invoice.riskReasons.join(" · ")}</span></div></div>
+              <div className="policy-box"><div className={`policy-icon ${invoice.authenticity.status}`}><Icon name={invoice.authenticity.status === "real" ? "shield" : invoice.authenticity.status === "fake" ? "x" : "clock"} /></div><div><strong>{invoice.authenticity.label} · {invoice.riskLevel === "low" ? "Policy checks passed" : "Human review required"}</strong><span>{invoice.authenticity.reason}{invoice.riskReasons.length ? ` · ${invoice.riskReasons.join(" · ")}` : ""}</span></div></div>
             </div>}
           </section>
         </div>
 
         <div className="lower-grid">
-          <section className="card approval-card"><div className="card-head"><div><span className="section-kicker">03 · CONTROL</span><h3>Approval boundary</h3></div><span className="boundary-badge"><Icon name="shield" /> impact gate</span></div>{!invoice ? <div className="approval-empty">The agent will pause here when policy requires a human decision.</div> : <div className={`approval-body ${status === "paid" ? "complete" : ""} ${invoice.riskLevel === "high" ? "high-risk" : "safe-risk"}`}><div className="approval-message"><div className="approval-symbol">{status === "paid" ? <Icon name="check" /> : invoice.riskLevel === "low" ? <Icon name="shield" /> : <Icon name="clock" />}</div><div><strong>{status === "paid" ? "Approved and executed" : status === "processing" && invoice.riskLevel === "low" ? "Auto-approval in progress" : invoice.riskLevel === "low" ? "Safe to auto-approve" : "This payment needs your approval"}</strong><span>{status === "paid" ? "The simulated transfer completed successfully." : invoice.riskLevel === "low" ? "Trusted vendor and amount threshold passed. No manual action is needed." : "No external system is changed until you confirm the action below."}</span></div></div>{status !== "paid" && invoice.riskLevel === "high" && <button className="approve-button" onClick={approvePayment} disabled={!canApprove}>Approve & simulate payment <Icon name="arrow" /></button>}</div>}</section>
+          <section className="card approval-card"><div className="card-head"><div><span className="section-kicker">03 · CONTROL</span><h3>Approval boundary</h3></div><span className="boundary-badge"><Icon name="shield" /> impact gate</span></div>{!invoice ? <div className="approval-empty">The agent will pause here when policy requires a human decision.</div> : <div className={`approval-body ${status === "paid" ? "complete" : ""} ${invoice.authenticity.status === "fake" ? "blocked-risk" : invoice.riskLevel === "high" ? "high-risk" : "safe-risk"}`}><div className="approval-message"><div className="approval-symbol">{status === "paid" ? <Icon name="check" /> : invoice.authenticity.status === "fake" ? <Icon name="x" /> : invoice.riskLevel === "low" ? <Icon name="shield" /> : <Icon name="clock" />}</div><div><strong>{status === "paid" ? "Approved and executed" : invoice.authenticity.status === "fake" ? "Blocked: authenticity failed" : status === "processing" && invoice.riskLevel === "low" ? "Auto-approval in progress" : invoice.riskLevel === "low" ? "Safe to auto-approve" : "This payment needs your approval"}</strong><span>{status === "paid" ? "The simulated transfer completed successfully." : invoice.authenticity.status === "fake" ? invoice.authenticity.reason : invoice.authenticity.status === "needs_review" ? "Unknown vendor. Human approval is required before any simulated payment." : invoice.riskLevel === "low" ? "Trusted vendor and amount threshold passed. No manual action is needed." : "No external system is changed until you confirm the action below."}</span></div></div>{status === "awaiting_approval" && invoice.authenticity.status !== "fake" && invoice.riskLevel === "high" && <button className="approve-button" onClick={approvePayment} disabled={!canApprove}>Approve & simulate payment <Icon name="arrow" /></button>}</div>}</section>
           <section className="card audit-card"><div className="card-head"><div><span className="section-kicker">04 · EVIDENCE</span><h3>Audit trail</h3></div><span className="audit-count">{audit.length} events</span></div><div className="timeline">{audit.map((event) => <div className="timeline-item" key={event.id}><span className={`timeline-dot ${event.tone}`} /> <div><strong>{event.label}</strong><span>{event.detail}</span></div><time>{event.time}</time></div>)}</div></section>
         </div>
       </section>

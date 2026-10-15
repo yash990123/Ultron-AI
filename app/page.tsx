@@ -222,10 +222,11 @@ export default function Home() {
         <h1>From messy invoice<br /><em>to verified action.</em></h1>
         <p className="hero-copy">ULTRON extracts the signal, checks the policy, and moves work forward — pausing only when an operator should decide.</p>
         <div className="hero-stats"><span><strong>01</strong> Ingest</span><span><strong>02</strong> Normalize</span><span><strong>03</strong> Govern</span><span><strong>04</strong> Execute</span></div>
+        <div className="hero-orbit" aria-hidden="true"><span className="orbit-core">Y</span><span className="orbit-ring ring-one" /><span className="orbit-ring ring-two" /><span className="orbit-signal signal-one" /><span className="orbit-signal signal-two" /></div>
       </section>
 
       <section className="workspace">
-        <div className="workspace-header"><div><span className="section-kicker">LIVE WORKFLOW</span><h2>Invoice command center</h2><p className="workspace-subtitle">{statusCopy.detail}</p></div><div className="status-wrap"><span className={`status-pill ${statusCopy.className}`}><span className="status-dot" />{statusCopy.label}</span><span className="workspace-meta">MOCK CONNECTORS · SAFE MODE</span></div></div>
+        <div className="workspace-header"><div><span className="section-kicker">LIVE WORKFLOW <span className="section-code">/ 00A7</span></span><h2>Invoice command center</h2><p className="workspace-subtitle">{statusCopy.detail}</p></div><div className="status-wrap"><span className={`status-pill ${statusCopy.className}`}><span className="status-dot" />{statusCopy.label}</span><span className="workspace-meta">MOCK CONNECTORS · SAFE MODE</span></div></div>
         <div className="workflow-rail">
           {["Ingest", "Extract", "Assess", "Approve", "Execute"].map((step, index) => {
             const done = (index === 0 && status !== "idle") || (index === 1 && invoice) || (index === 2 && invoice) || (index === 3 && status === "paid") || (index === 4 && status === "paid");
@@ -240,6 +241,7 @@ export default function Home() {
           <div className="operator-metric"><span className="metric-icon amber"><Icon name="clock" /></span><div><span>HUMAN GATE</span><strong>Impact-aware pause</strong></div><i>ARMED</i></div>
         </div>
 
+        <div className="console-caption"><span>OPERATIONS DECK</span><span>SESSION / INVOICE-LOCAL-01</span><span className="caption-line" /></div>
         <div className="grid">
           <section className="card input-card">
             <div className="card-head"><div><span className="section-kicker">01 · INGEST</span><h3>Bring in an invoice</h3></div><span className="input-badge"><Icon name="upload" /> text signal</span></div>

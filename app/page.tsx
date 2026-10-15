@@ -90,6 +90,13 @@ export default function Home() {
     rejected: { label: "Workflow rejected", detail: "The proposed action was not executed", className: "red" },
     error: { label: "Workflow error", detail: "Review the audit trail for the blocked step", className: "red" }
   }[status]), [status]);
+  const agentState = useMemo(() => {
+    if (status === "processing") return { label: "Reasoning", detail: "Extracting entities and evaluating guardrails", tone: "active" };
+    if (status === "awaiting_approval") return { label: "Handoff ready", detail: "Decision packet prepared for the operator", tone: "attention" };
+    if (status === "paid") return { label: "Task complete", detail: "Action verified and written to the ledger", tone: "complete" };
+    if (status === "error") return { label: "Needs attention", detail: "The agent stopped before execution", tone: "attention" };
+    return { label: "Listening", detail: "Ready for an invoice signal", tone: "idle" };
+  }, [status]);
 
   function addAudit(label: string, detail: string, tone: AuditEvent["tone"] = "done") {
     setAudit((events) => [...events, { id: `${Date.now()}-${label}`, label, detail, time: timeNow(), tone }]);
@@ -165,10 +172,10 @@ export default function Home() {
 
   async function ingestFile(file: File) {
     setError("");
+    setUploadedFile({ name: file.name, size: file.size });
     const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
     const supported = isPdf || file.type === "text/plain" || file.type === "text/csv" || file.type === "application/json" || /\.(txt|csv|json)$/i.test(file.name);
     if (!supported) {
-      setUploadedFile({ name: file.name, size: file.size });
       setError("Upload a .pdf, .txt, .csv, or .json invoice.");
       return;
     }
@@ -239,6 +246,12 @@ export default function Home() {
           <div className="operator-metric"><span className="metric-icon violet"><Icon name="shield" /></span><div><span>POLICY ENGINE</span><strong>3 guardrails active</strong></div><i>LOCKED</i></div>
           <div className="operator-metric"><span className="metric-icon green"><Icon name="check" /></span><div><span>CONNECTORS</span><strong>Mock / Gemini ready</strong></div><i>ONLINE</i></div>
           <div className="operator-metric"><span className="metric-icon amber"><Icon name="clock" /></span><div><span>HUMAN GATE</span><strong>Impact-aware pause</strong></div><i>ARMED</i></div>
+        </div>
+        <div className={`agent-command-bar ${agentState.tone}`} aria-live="polite">
+          <div className="agent-orb"><span /><span /><span /></div>
+          <div className="agent-command-copy"><span className="section-kicker">ULTRON AGENT · LIVE LOOP</span><strong>{agentState.label}</strong><span>{agentState.detail}</span></div>
+          <div className="agent-command-steps"><span className="agent-step-complete">observe</span><span className="agent-step-line" /><span className={status !== "idle" ? "agent-step-complete" : ""}>reason</span><span className="agent-step-line" /><span className={invoice ? "agent-step-complete" : ""}>act</span></div>
+          <span className="agent-presence"><i /> autonomous core</span>
         </div>
 
         <div className="console-caption"><span>OPERATIONS DECK</span><span>SESSION / INVOICE-LOCAL-01</span><span className="caption-line" /></div>

@@ -253,10 +253,11 @@ export default function Home() {
         <h1>From messy invoice<br /><em>to verified action.</em></h1>
         <p className="hero-copy">ULTRON extracts the signal, checks the policy, and moves work forward — pausing only when an operator should decide.</p>
         <div className="hero-stats"><span><strong>01</strong> Ingest</span><span><strong>02</strong> Normalize</span><span><strong>03</strong> Govern</span><span><strong>04</strong> Execute</span></div>
+        <a className="scroll-cue" href="#workspace"><span>Enter operations deck</span><Icon name="arrow" /></a>
         <div className="hero-orbit" aria-hidden="true"><span className="orbit-core">Y</span><span className="orbit-ring ring-one" /><span className="orbit-ring ring-two" /><span className="orbit-signal signal-one" /><span className="orbit-signal signal-two" /></div>
       </section>
 
-      <section className="workspace">
+      <section className="workspace" id="workspace">
         <div className="workspace-header"><div><span className="section-kicker">LIVE WORKFLOW <span className="section-code">/ 00A7</span></span><h2>Invoice command center</h2><p className="workspace-subtitle">{statusCopy.detail}</p></div><div className="status-wrap"><span className={`status-pill ${statusCopy.className}`}><span className="status-dot" />{statusCopy.label}</span><span className="workspace-meta">MOCK CONNECTORS · SAFE MODE</span></div></div>
         <div className="workflow-rail">
           {["Ingest", "Extract", "Normalize", "Plan", "Tool calls", "Guardrails / HITL", "Execute", "Audit"].map((step, index) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { type ChangeEvent, useMemo, useRef, useState } from "react";
 
 type RiskLevel = "low" | "high";
 type Status = "idle" | "processing" | "awaiting_approval" | "paid" | "rejected" | "error";
@@ -77,6 +77,9 @@ export default function Home() {
   const [error, setError] = useState("");
   const [audit, setAudit] = useState<AuditEvent[]>(initialAudit);
   const [activeTab, setActiveTab] = useState<"input" | "normalized">("input");
+  const [uploadedFile, setUploadedFile] = useState<{ name: string; size: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const statusCopy = useMemo(() => ({
     idle: { label: "Ready to process", detail: "Paste a signal or choose a demo invoice", className: "neutral" },
@@ -151,11 +154,45 @@ export default function Home() {
 
   function loadSample(sample: "easy" | "risky") {
     setInvoiceText(sample === "easy" ? EASY_INVOICE : RISKY_INVOICE);
+    setUploadedFile(null);
     setInvoice(null);
     setStatus("idle");
     setError("");
     setAudit(initialAudit);
     setActiveTab("input");
+  }
+
+  async function ingestFile(file: File) {
+    setError("");
+    const supported = file.type === "text/plain" || file.type === "text/csv" || file.type === "application/json" || /\.(txt|csv|json)$/i.test(file.name);
+    if (!supported) {
+      setUploadedFile({ name: file.name, size: file.size });
+      setError("For this demo, upload a .txt, .csv, or .json invoice, or paste extracted PDF text below.");
+      return;
+    }
+    try {
+      const text = await file.text();
+      if (!text.trim()) throw new Error("That file is empty.");
+      setInvoiceText(text);
+      setUploadedFile({ name: file.name, size: file.size });
+      setInvoice(null);
+      setStatus("idle");
+      setAudit(initialAudit);
+      setActiveTab("input");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "The invoice file could not be read.");
+    }
+  }
+
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (file) void ingestFile(file);
+    event.target.value = "";
+  }
+
+  function clearUpload() {
+    setUploadedFile(null);
+    setError("");
   }
 
   const canApprove = status === "awaiting_approval" && invoice;
@@ -189,6 +226,13 @@ export default function Home() {
           <section className="card input-card">
             <div className="card-head"><div><span className="section-kicker">01 · INGEST</span><h3>Bring in an invoice</h3></div><span className="input-badge"><Icon name="upload" /> text signal</span></div>
             <div className="sample-row"><span>Start with a signal</span><div className="sample-controls"><button className={`sample-button ${invoiceText === EASY_INVOICE ? "selected" : ""}`} onClick={() => loadSample("easy")} aria-pressed={invoiceText === EASY_INVOICE}><span className="sample-indicator safe" />Trusted vendor <span className="sample-arrow">↗</span></button><button className={`sample-button risky-sample ${invoiceText === RISKY_INVOICE ? "selected" : ""}`} onClick={() => loadSample("risky")} aria-pressed={invoiceText === RISKY_INVOICE}><span className="sample-indicator risky" />Risky vendor <span className="sample-arrow">↗</span></button></div></div>
+            <input ref={fileInputRef} className="visually-hidden" type="file" accept=".txt,.csv,.json,text/plain,text/csv,application/json" onChange={handleFileChange} />
+            <div className={`upload-zone ${isDragging ? "dragging" : ""} ${uploadedFile ? "has-file" : ""}`} onDragOver={(event) => { event.preventDefault(); setIsDragging(true); }} onDragLeave={() => setIsDragging(false)} onDrop={(event) => { event.preventDefault(); setIsDragging(false); const file = event.dataTransfer.files[0]; if (file) void ingestFile(file); }} role="region" aria-label="Invoice file upload">
+              <div className="upload-zone-icon"><Icon name="upload" /></div>
+              <div className="upload-zone-copy">{uploadedFile ? <><strong>{uploadedFile.name}</strong><span>{Math.max(1, Math.round(uploadedFile.size / 1024))} KB · loaded into the signal editor</span></> : <><strong>Drop an invoice file here</strong><span>TXT, CSV, or JSON · or browse from your device</span></>}</div>
+              <button className="browse-button" type="button" onClick={() => fileInputRef.current?.click()}>{uploadedFile ? "Replace file" : "Browse files"}</button>
+              {uploadedFile && <button className="clear-file" type="button" onClick={clearUpload} aria-label="Remove uploaded file"><Icon name="x" /></button>}
+            </div>
             <textarea id="invoice-input" aria-label="Invoice input" aria-describedby="invoice-help" value={invoiceText} onChange={(event) => setInvoiceText(event.target.value)} placeholder="Paste an invoice, email, or extracted document text..." />
             <div className="input-foot"><span id="invoice-help" className="char-count">{invoiceText.length} characters · plaintext signal</span><button className="primary-button" onClick={processInvoice} disabled={!invoiceText.trim() || status === "processing"}>{status === "processing" ? "Processing..." : "Process invoice"} <Icon name="arrow" /></button></div>
             {error && <div className="error-banner"><Icon name="x" />{error}</div>}

@@ -164,14 +164,25 @@ export default function Home() {
 
   async function ingestFile(file: File) {
     setError("");
-    const supported = file.type === "text/plain" || file.type === "text/csv" || file.type === "application/json" || /\.(txt|csv|json)$/i.test(file.name);
+    const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+    const supported = isPdf || file.type === "text/plain" || file.type === "text/csv" || file.type === "application/json" || /\.(txt|csv|json)$/i.test(file.name);
     if (!supported) {
       setUploadedFile({ name: file.name, size: file.size });
-      setError("For this demo, upload a .txt, .csv, or .json invoice, or paste extracted PDF text below.");
+      setError("Upload a .pdf, .txt, .csv, or .json invoice.");
       return;
     }
     try {
-      const text = await file.text();
+      let text = "";
+      if (isPdf) {
+        const formData = new FormData();
+        formData.append("file", file);
+        const response = await fetch("/api/extract", { method: "POST", body: formData });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "The PDF could not be extracted.");
+        text = data.text;
+      } else {
+        text = await file.text();
+      }
       if (!text.trim()) throw new Error("That file is empty.");
       setInvoiceText(text);
       setUploadedFile({ name: file.name, size: file.size });
@@ -226,10 +237,10 @@ export default function Home() {
           <section className="card input-card">
             <div className="card-head"><div><span className="section-kicker">01 · INGEST</span><h3>Bring in an invoice</h3></div><span className="input-badge"><Icon name="upload" /> text signal</span></div>
             <div className="sample-row"><span>Start with a signal</span><div className="sample-controls"><button className={`sample-button ${invoiceText === EASY_INVOICE ? "selected" : ""}`} onClick={() => loadSample("easy")} aria-pressed={invoiceText === EASY_INVOICE}><span className="sample-indicator safe" />Trusted vendor <span className="sample-arrow">↗</span></button><button className={`sample-button risky-sample ${invoiceText === RISKY_INVOICE ? "selected" : ""}`} onClick={() => loadSample("risky")} aria-pressed={invoiceText === RISKY_INVOICE}><span className="sample-indicator risky" />Risky vendor <span className="sample-arrow">↗</span></button></div></div>
-            <input ref={fileInputRef} className="visually-hidden" type="file" accept=".txt,.csv,.json,text/plain,text/csv,application/json" onChange={handleFileChange} />
+            <input ref={fileInputRef} className="visually-hidden" type="file" accept=".pdf,.txt,.csv,.json,application/pdf,text/plain,text/csv,application/json" onChange={handleFileChange} />
             <div className={`upload-zone ${isDragging ? "dragging" : ""} ${uploadedFile ? "has-file" : ""}`} onDragOver={(event) => { event.preventDefault(); setIsDragging(true); }} onDragLeave={() => setIsDragging(false)} onDrop={(event) => { event.preventDefault(); setIsDragging(false); const file = event.dataTransfer.files[0]; if (file) void ingestFile(file); }} role="region" aria-label="Invoice file upload">
               <div className="upload-zone-icon"><Icon name="upload" /></div>
-              <div className="upload-zone-copy">{uploadedFile ? <><strong>{uploadedFile.name}</strong><span>{Math.max(1, Math.round(uploadedFile.size / 1024))} KB · loaded into the signal editor</span></> : <><strong>Drop an invoice file here</strong><span>TXT, CSV, or JSON · or browse from your device</span></>}</div>
+              <div className="upload-zone-copy">{uploadedFile ? <><strong>{uploadedFile.name}</strong><span>{Math.max(1, Math.round(uploadedFile.size / 1024))} KB · text extracted into the signal editor</span></> : <><strong>Drop an invoice file here</strong><span>PDF, TXT, CSV, or JSON · text is extracted automatically</span></>}</div>
               <button className="browse-button" type="button" onClick={() => fileInputRef.current?.click()}>{uploadedFile ? "Replace file" : "Browse files"}</button>
               {uploadedFile && <button className="clear-file" type="button" onClick={clearUpload} aria-label="Remove uploaded file"><Icon name="x" /></button>}
             </div>

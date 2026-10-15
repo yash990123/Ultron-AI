@@ -213,6 +213,32 @@ footer { color: #607984; }
   .workflow-rail { border-bottom: 0; }
 }
 
+.brand-mark { position: relative; overflow: hidden; }
+.brand-mark::after { position: absolute; inset: 0; border: 1px solid rgba(126,245,255,.25); border-radius: inherit; content: ""; transform: rotate(45deg) scale(.7); }
+.operator-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px; margin: 0 0 15px; }
+.operator-metric { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 11px; border: 1px solid #1d394b; border-radius: 8px; background: rgba(8, 17, 28, .66); }
+.operator-metric > div { min-width: 0; flex: 1; }
+.operator-metric span:not(.metric-icon) { display: block; overflow: hidden; color: #66838f; font: 8px "DM Mono"; letter-spacing: .09em; text-overflow: ellipsis; white-space: nowrap; }
+.operator-metric strong { display: block; overflow: hidden; margin-top: 4px; color: #d4eef0; font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.operator-metric i { color: #61e8d1; font: 8px "DM Mono"; font-style: normal; }
+.operator-metric:nth-child(2) i { color: #ac98ff; }
+.operator-metric:nth-child(4) i { color: #f8b966; }
+.metric-icon { display: grid; place-items: center; flex: 0 0 auto; width: 27px; height: 27px; border-radius: 7px; }
+.metric-icon svg { width: 14px; }
+.metric-icon.cyan { color: var(--cyan); background: rgba(70,224,255,.1); }
+.metric-icon.violet { color: var(--violet); background: rgba(157,131,255,.12); }
+.metric-icon.green { color: var(--green); background: rgba(70,224,193,.1); }
+.metric-icon.amber { color: var(--amber); background: rgba(242,173,91,.1); }
+.footer-mark { display: inline-grid; }
+.footer-mark svg { width: 13px; height: 13px; }
+@media (max-width: 900px) {
+  .operator-strip { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 520px) {
+  .operator-strip { grid-template-columns: 1fr; }
+  .operator-metric { padding: 10px; }
+}
+
 .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .upload-zone {
   position: relative;

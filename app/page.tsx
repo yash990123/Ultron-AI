@@ -57,12 +57,12 @@ function timeNow() {
   return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(new Date());
 }
 
-function Icon({ name }: { name: "arrow" | "check" | "clock" | "face" | "shield" | "spark" | "upload" | "x" }) {
+function Icon({ name }: { name: "arrow" | "check" | "clock" | "shield" | "spark" | "upload" | "x" | "y" }) {
   const paths = {
     arrow: <><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></>,
     check: <><path d="m5 12 4 4L19 6" /></>,
     clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
-    face: <><path d="m7 4 5-2 5 2 3 5v6l-3 5-5 2-5-2-3-5V9l3-5Z" /><path d="M8 10h3M13 10h3M9 16h6" /><path d="M12 8v3" /></>,
+    y: <><path d="M5 5 12 12 19 5" /><path d="M12 12v8" /><path d="M8 20h8" /></>,
     shield: <><path d="M12 3 20 6v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3Z" /><path d="m8.5 12 2.2 2.2 4.8-5" /></>,
     spark: <><path d="m12 3-1.3 5.7L5 10l5.7 1.3L12 17l1.3-5.7L19 10l-5.7-1.3L12 3Z" /><path d="m19 17-.6 2.4L16 20l2.4.6L19 23l.6-2.4L22 20l-2.4-.6L19 17Z" /></>,
     upload: <><path d="M12 16V4" /><path d="m7 9 5-5 5 5" /><path d="M5 20h14" /></>,
@@ -212,7 +212,7 @@ export default function Home() {
   return (
     <main className="shell">
       <nav className="topbar">
-        <div className="brand"><span className="brand-mark"><Icon name="face" /></span><span>ULTRON<span className="brand-ai">/AI</span></span></div>
+        <div className="brand"><span className="brand-mark"><Icon name="y" /></span><span>ULTRON<span className="brand-ai">/AI</span></span></div>
         <div className="nav-context"><span className="pulse" /> Invoice operations <span className="slash">/</span> Demo workspace</div>
         <div className="nav-right"><span className="live-dot" /> Systems nominal <span className="avatar">OP</span></div>
       </nav>
@@ -232,6 +232,12 @@ export default function Home() {
             const active = (index === 0 && status === "idle") || (index === 1 && status === "processing") || (index === 2 && invoice && status !== "paid") || (index === 3 && status === "awaiting_approval") || (index === 4 && status === "paid");
             return <div className={`rail-step ${done ? "done" : ""} ${active ? "active" : ""}`} key={step}><span className="rail-number">{done ? <Icon name="check" /> : `0${index + 1}`}</span><span>{step}</span>{index < 4 && <span className="rail-line" />}</div>;
           })}
+        </div>
+        <div className="operator-strip" aria-label="Operator console metrics">
+          <div className="operator-metric"><span className="metric-icon cyan"><Icon name="spark" /></span><div><span>AGENT MODE</span><strong>Governed autonomy</strong></div><i className="metric-live">LIVE</i></div>
+          <div className="operator-metric"><span className="metric-icon violet"><Icon name="shield" /></span><div><span>POLICY ENGINE</span><strong>3 guardrails active</strong></div><i>LOCKED</i></div>
+          <div className="operator-metric"><span className="metric-icon green"><Icon name="check" /></span><div><span>CONNECTORS</span><strong>Mock / Gemini ready</strong></div><i>ONLINE</i></div>
+          <div className="operator-metric"><span className="metric-icon amber"><Icon name="clock" /></span><div><span>HUMAN GATE</span><strong>Impact-aware pause</strong></div><i>ARMED</i></div>
         </div>
 
         <div className="grid">
@@ -267,7 +273,7 @@ export default function Home() {
         </div>
       </section>
 
-      <footer><a className="footer-brand-link" href="/about"><span><span className="footer-mark"><Icon name="face" /></span> ULTRON AI</span></a><span>Governed autonomy for the work between systems</span><span className="footer-right"><Icon name="shield" /> Human-in-the-loop by design</span><a className="about-link" href="/about">About ULTRON ↗</a></footer>
+      <footer><a className="footer-brand-link" href="/about"><span><span className="footer-mark"><Icon name="y" /></span> ULTRON AI</span></a><span>Governed autonomy for the work between systems</span><span className="footer-right"><Icon name="shield" /> Human-in-the-loop by design</span><a className="about-link" href="/about">About ULTRON ↗</a></footer>
     </main>
   );
 }

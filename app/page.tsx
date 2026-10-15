@@ -149,9 +149,11 @@ export default function Home() {
         addAudit("Approval boundary", "High-impact payment paused before execution", "warn");
       }
     } catch (err) {
-      setStatus("error");
-      setError(err instanceof Error ? err.message : "Something went wrong.");
-      addAudit("Workflow stopped", "Unable to produce a normalized invoice", "warn");
+      const message = err instanceof Error ? err.message : "Something went wrong.";
+      const rejected = message.startsWith("Invoice rejected:");
+      setStatus(rejected ? "rejected" : "error");
+      setError(message);
+      addAudit(rejected ? "Invoice rejected" : "Workflow stopped", rejected ? message : "Unable to produce a normalized invoice", "warn");
     }
   }
 

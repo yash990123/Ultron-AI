@@ -26,5 +26,5 @@ When configured, `POST /api/process` asks Gemini for the extraction contract and
 ## Workflow boundaries
 
 - Trusted vendors are `Acme Cloud Services`, `Orbit Office Supplies`, and `Vertex Logistics`.
-- Any untrusted vendor, invoice over `$10,000`, or missing purchase order requires approval.
+- Only validated invoices from trusted vendors enter the workflow. Fake, incomplete, or unverified invoices are rejected with a visible error; trusted invoices over `$10,000` or missing a purchase order require approval.
 - Payment is a simulated transaction and is only available through the approval action.

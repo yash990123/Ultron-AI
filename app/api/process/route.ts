@@ -15,6 +15,14 @@ type Invoice = {
 };
 
 const trustedVendors = ["acme cloud services", "orbit office supplies", "vertex logistics"];
+const invoiceRejectedMessage = "Invoice rejected: the invoice is fake, incomplete, or from an unverified vendor.";
+
+function isValidatedInvoice(invoice: Invoice) {
+  return invoice.vendor !== "Unknown vendor"
+    && invoice.invoiceNumber !== "Not specified"
+    && invoice.amount > 0
+    && invoice.trustedVendor;
+}
 
 function parseMoney(text: string) {
   const match = text.match(/(?:total due|amount due|total)[^$0-9]*\$?\s*([\d,]+(?:\.\d{2})?)/i) || text.match(/\$\s*([\d,]+(?:\.\d{2})?)/);
@@ -74,6 +82,9 @@ export async function POST(request: Request) {
       if (!invoice || body.approved !== true) {
         return NextResponse.json({ error: "Payment requires an explicit approved workflow." }, { status: 403 });
       }
+      if (!isValidatedInvoice(invoice)) {
+        return NextResponse.json({ error: invoiceRejectedMessage }, { status: 422 });
+      }
       return NextResponse.json({ transactionId: `SIM-${Date.now().toString(36).toUpperCase()}`, mode: "simulated" });
     }
     const text = typeof body.text === "string" ? body.text.trim() : "";
@@ -89,7 +100,13 @@ export async function POST(request: Request) {
         ...(!extracted.purchaseOrder ? ["purchase order is missing"] : [])
       ];
       extracted.riskLevel = extracted.riskReasons.length ? "high" : "low";
+      if (!isValidatedInvoice(extracted)) {
+        return NextResponse.json({ error: invoiceRejectedMessage }, { status: 422 });
+      }
       return NextResponse.json({ invoice: extracted, extraction: "gemini" });
+    }
+    if (!isValidatedInvoice(invoice)) {
+      return NextResponse.json({ error: invoiceRejectedMessage }, { status: 422 });
     }
     return NextResponse.json({ invoice, extraction: "mock" });
   } catch (error) {

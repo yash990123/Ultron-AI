@@ -79,12 +79,12 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<"input" | "normalized">("input");
 
   const statusCopy = useMemo(() => ({
-    idle: { label: "Ready to process", className: "neutral" },
-    processing: { label: "Agent is working", className: "blue" },
-    awaiting_approval: { label: "Approval required", className: "amber" },
-    paid: { label: "Payment simulated", className: "green" },
-    rejected: { label: "Workflow rejected", className: "red" },
-    error: { label: "Workflow error", className: "red" }
+    idle: { label: "Ready to process", detail: "Paste a signal or choose a demo invoice", className: "neutral" },
+    processing: { label: "Agent is working", detail: "Extracting fields and applying policy", className: "blue" },
+    awaiting_approval: { label: "Approval required", detail: "Impact boundary is holding the payment", className: "amber" },
+    paid: { label: "Payment simulated", detail: "Result recorded in the audit trail", className: "green" },
+    rejected: { label: "Workflow rejected", detail: "The proposed action was not executed", className: "red" },
+    error: { label: "Workflow error", detail: "Review the audit trail for the blocked step", className: "red" }
   }[status]), [status]);
 
   function addAudit(label: string, detail: string, tone: AuditEvent["tone"] = "done") {
@@ -176,7 +176,7 @@ export default function Home() {
       </section>
 
       <section className="workspace">
-        <div className="workspace-header"><div><span className="section-kicker">LIVE WORKFLOW</span><h2>Invoice command center</h2></div><span className={`status-pill ${statusCopy.className}`}><span className="status-dot" />{statusCopy.label}</span></div>
+        <div className="workspace-header"><div><span className="section-kicker">LIVE WORKFLOW</span><h2>Invoice command center</h2><p className="workspace-subtitle">{statusCopy.detail}</p></div><div className="status-wrap"><span className={`status-pill ${statusCopy.className}`}><span className="status-dot" />{statusCopy.label}</span><span className="workspace-meta">MOCK CONNECTORS · SAFE MODE</span></div></div>
         <div className="workflow-rail">
           {["Ingest", "Extract", "Assess", "Approve", "Execute"].map((step, index) => {
             const done = (index === 0 && status !== "idle") || (index === 1 && invoice) || (index === 2 && invoice) || (index === 3 && status === "paid") || (index === 4 && status === "paid");
@@ -188,16 +188,16 @@ export default function Home() {
         <div className="grid">
           <section className="card input-card">
             <div className="card-head"><div><span className="section-kicker">01 · INGEST</span><h3>Bring in an invoice</h3></div><span className="input-badge"><Icon name="upload" /> text signal</span></div>
-            <div className="sample-row"><span>Try a signal</span><button className="sample-button" onClick={() => loadSample("easy")}>Trusted vendor <span>↗</span></button><button className="sample-button risky-sample" onClick={() => loadSample("risky")}>Risky vendor <span>↗</span></button></div>
-            <textarea aria-label="Invoice input" value={invoiceText} onChange={(event) => setInvoiceText(event.target.value)} placeholder="Paste an invoice, email, or extracted document text..." />
-            <div className="input-foot"><span className="char-count">{invoiceText.length} characters · plaintext</span><button className="primary-button" onClick={processInvoice} disabled={!invoiceText.trim() || status === "processing"}>{status === "processing" ? "Processing..." : "Process invoice"} <Icon name="arrow" /></button></div>
+            <div className="sample-row"><span>Start with a signal</span><div className="sample-controls"><button className={`sample-button ${invoiceText === EASY_INVOICE ? "selected" : ""}`} onClick={() => loadSample("easy")} aria-pressed={invoiceText === EASY_INVOICE}><span className="sample-indicator safe" />Trusted vendor <span className="sample-arrow">↗</span></button><button className={`sample-button risky-sample ${invoiceText === RISKY_INVOICE ? "selected" : ""}`} onClick={() => loadSample("risky")} aria-pressed={invoiceText === RISKY_INVOICE}><span className="sample-indicator risky" />Risky vendor <span className="sample-arrow">↗</span></button></div></div>
+            <textarea id="invoice-input" aria-label="Invoice input" aria-describedby="invoice-help" value={invoiceText} onChange={(event) => setInvoiceText(event.target.value)} placeholder="Paste an invoice, email, or extracted document text..." />
+            <div className="input-foot"><span id="invoice-help" className="char-count">{invoiceText.length} characters · plaintext signal</span><button className="primary-button" onClick={processInvoice} disabled={!invoiceText.trim() || status === "processing"}>{status === "processing" ? "Processing..." : "Process invoice"} <Icon name="arrow" /></button></div>
             {error && <div className="error-banner"><Icon name="x" />{error}</div>}
           </section>
 
           <section className="card result-card">
             <div className="card-head"><div><span className="section-kicker">02 · NORMALIZE</span><h3>Execution contract</h3></div>{invoice && <span className="confidence"><span className="confidence-ring">{invoice.confidence}%</span> confidence</span>}</div>
             <div className="tabs"><button className={activeTab === "input" ? "selected" : ""} onClick={() => setActiveTab("input")}>Overview</button><button className={activeTab === "normalized" ? "selected" : ""} onClick={() => setActiveTab("normalized")} disabled={!invoice}>Normalized JSON</button></div>
-            {!invoice ? <div className="empty-state"><div className="empty-icon"><Icon name="spark" /></div><strong>Your contract appears here</strong><span>Process an invoice to see extracted entities, policy checks, and the next safe action.</span></div> : activeTab === "normalized" ? <pre className="json-view">{JSON.stringify(invoice, null, 2)}</pre> : <div className="details">
+            {!invoice ? <div className="empty-state"><div className="empty-icon"><Icon name="spark" /></div><strong>Your contract appears here</strong><span>Process an invoice to see extracted entities, policy checks, and the next safe action.</span><span className="empty-hint">Try the trusted sample for an instant pass.</span></div> : activeTab === "normalized" ? <pre className="json-view">{JSON.stringify(invoice, null, 2)}</pre> : <div className="details">
               <div className="vendor-row"><div className="vendor-logo">{invoice.vendor.slice(0, 1)}</div><div><span className="muted-label">VENDOR</span><strong>{invoice.vendor}</strong><span className="sub-value">{invoice.invoiceNumber}</span></div><span className={`trust-tag ${invoice.trustedVendor ? "trusted" : "unverified"}`}>{invoice.trustedVendor ? "Trusted" : "Unverified"}</span></div>
               <div className="metric-grid"><div><span className="muted-label">TOTAL DUE</span><strong className="amount">{money(invoice.amount, invoice.currency)}</strong></div><div><span className="muted-label">DUE DATE</span><strong>{invoice.dueDate || "Not specified"}</strong></div><div><span className="muted-label">PURCHASE ORDER</span><strong>{invoice.purchaseOrder || "Not found"}</strong></div></div>
               <div className="policy-box"><div className={`policy-icon ${invoice.riskLevel}`}><Icon name={invoice.riskLevel === "low" ? "shield" : "clock"} /></div><div><strong>{invoice.riskLevel === "low" ? "Policy checks passed" : "Human review required"}</strong><span>{invoice.riskLevel === "low" ? "Trusted vendor · amount within auto-approve threshold" : invoice.riskReasons.join(" · ")}</span></div></div>
@@ -206,7 +206,7 @@ export default function Home() {
         </div>
 
         <div className="lower-grid">
-          <section className="card approval-card"><div className="card-head"><div><span className="section-kicker">03 · CONTROL</span><h3>Approval boundary</h3></div><Icon name="shield" /></div>{!invoice ? <div className="approval-empty">The agent will pause here when policy requires a human decision.</div> : <div className={`approval-body ${status === "paid" ? "complete" : ""}`}><div className="approval-message"><div className="approval-symbol">{status === "paid" ? <Icon name="check" /> : <Icon name="clock" />}</div><div><strong>{status === "paid" ? "Approved and executed" : invoice.riskLevel === "low" ? "Ready for your approval" : "This payment needs your approval"}</strong><span>{status === "paid" ? "The simulated transfer completed successfully." : "No external system is changed until you confirm the action below."}</span></div></div>{status !== "paid" && <button className="approve-button" onClick={approvePayment} disabled={!canApprove}>Approve & simulate payment <Icon name="arrow" /></button>}</div>}</section>
+          <section className="card approval-card"><div className="card-head"><div><span className="section-kicker">03 · CONTROL</span><h3>Approval boundary</h3></div><span className="boundary-badge"><Icon name="shield" /> impact gate</span></div>{!invoice ? <div className="approval-empty">The agent will pause here when policy requires a human decision.</div> : <div className={`approval-body ${status === "paid" ? "complete" : ""} ${invoice.riskLevel === "high" ? "high-risk" : "safe-risk"}`}><div className="approval-message"><div className="approval-symbol">{status === "paid" ? <Icon name="check" /> : invoice.riskLevel === "low" ? <Icon name="shield" /> : <Icon name="clock" />}</div><div><strong>{status === "paid" ? "Approved and executed" : status === "processing" && invoice.riskLevel === "low" ? "Auto-approval in progress" : invoice.riskLevel === "low" ? "Safe to auto-approve" : "This payment needs your approval"}</strong><span>{status === "paid" ? "The simulated transfer completed successfully." : invoice.riskLevel === "low" ? "Trusted vendor and amount threshold passed. No manual action is needed." : "No external system is changed until you confirm the action below."}</span></div></div>{status !== "paid" && invoice.riskLevel === "high" && <button className="approve-button" onClick={approvePayment} disabled={!canApprove}>Approve & simulate payment <Icon name="arrow" /></button>}</div>}</section>
           <section className="card audit-card"><div className="card-head"><div><span className="section-kicker">04 · EVIDENCE</span><h3>Audit trail</h3></div><span className="audit-count">{audit.length} events</span></div><div className="timeline">{audit.map((event) => <div className="timeline-item" key={event.id}><span className={`timeline-dot ${event.tone}`} /> <div><strong>{event.label}</strong><span>{event.detail}</span></div><time>{event.time}</time></div>)}</div></section>
         </div>
       </section>

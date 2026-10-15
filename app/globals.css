@@ -21,3 +21,49 @@ svg { width: 17px; height: 17px; }
 footer { display: flex; align-items: center; gap: 25px; color: #9ca6a0; font: 10px "DM Mono"; padding: 24px 3px 0; }.footer-mark { display: inline-grid; place-items: center; color: var(--deep-green); background: #dbeadf; width: 18px; height: 18px; border-radius: 4px; margin-right: 5px; font: 600 11px "Space Grotesk"; }.footer-right { display: flex; align-items: center; gap: 5px; margin-left: auto; color: var(--deep-green); }.footer-right svg { width: 13px; }
 @media (max-width: 900px) { .shell { padding: 0 20px 22px; }.nav-context { display: none; }.grid, .lower-grid { grid-template-columns: 1fr; }.workflow-rail { overflow-x: auto; min-width: 650px; }.workspace { overflow: hidden; }.hero { padding: 48px 0 35px; }.hero h1 { font-size: 45px; }.hero-stats { gap: 12px; flex-wrap: wrap; justify-content: center; }.card { min-height: auto; }.approval-empty { padding: 28px; } }
 @media (max-width: 520px) { .nav-right { display: none; }.hero h1 { font-size: 38px; }.workspace { padding: 14px; }.metric-grid { grid-template-columns: 1fr; gap: 12px; }.metric-grid > div + div { border-left: 0; padding-left: 0; }.input-foot { align-items: flex-start; gap: 12px; flex-direction: column; }.primary-button { width: 100%; justify-content: center; }footer { flex-wrap: wrap; gap: 10px; }.footer-right { margin-left: 0; } }
+
+/* Demo polish: keep the action path obvious at a glance. */
+.workspace-header { align-items: center; }
+.workspace-subtitle { margin: 7px 0 0; color: var(--muted); font-size: 12px; }
+.status-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; }
+.workspace-meta { color: #9ca8a1; font: 9px "DM Mono"; letter-spacing: .08em; }
+.sample-controls { display: flex; gap: 7px; }
+.sample-button { display: inline-flex; align-items: center; gap: 6px; transition: background .16s ease, border-color .16s ease, transform .16s ease; }
+.sample-button:hover { transform: translateY(-1px); }
+.sample-button.selected { background: #e7f1e9; border-color: #a9c7b1; box-shadow: 0 0 0 2px #edf5ef; }
+.sample-button.risky-sample.selected { background: #fbf0df; border-color: #dcb77e; box-shadow: 0 0 0 2px #fff7ec; }
+.sample-indicator { width: 6px; height: 6px; border-radius: 50%; }
+.sample-indicator.safe { background: var(--green); }
+.sample-indicator.risky { background: var(--amber); }
+.sample-arrow { margin-left: 1px; color: var(--green); }
+.risky-sample .sample-arrow { color: var(--amber); }
+.input-card textarea { transition: border-color .16s ease, box-shadow .16s ease, background .16s ease; }
+.input-card textarea:hover { background: #fbfcfa; border-color: #b9cbbd; }
+.primary-button, .approve-button { transition: background .16s ease, box-shadow .16s ease, transform .16s ease; }
+.primary-button:not(:disabled):hover, .approve-button:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 7px 14px rgba(46,91,75,.15); }
+.primary-button:focus-visible, .approve-button:focus-visible, .sample-button:focus-visible, .tabs button:focus-visible { outline: 3px solid #b9d8c0; outline-offset: 3px; }
+.tabs button:disabled { opacity: .4; }
+.empty-hint { color: var(--green) !important; font: 10px "DM Mono"; margin-top: 12px; }
+.boundary-badge { display: inline-flex; align-items: center; gap: 5px; color: var(--deep-green); background: #e7f0e9; padding: 6px 8px; border-radius: 5px; font: 9px "DM Mono"; text-transform: uppercase; letter-spacing: .06em; }
+.boundary-badge svg { width: 13px; }
+.approval-body.safe-risk { background: #eef6ef; border-color: #d4e7d7; }
+.approval-body.high-risk { background: #fff7eb; border-color: #f0ddbf; }
+.safe-risk .approval-symbol { background: #dcece0; color: var(--deep-green); }
+.high-risk .approval-symbol { background: #f5e3c6; color: var(--amber); }
+.approval-body { transition: background .2s ease, border-color .2s ease; }
+@media (max-width: 900px) {
+  .workspace-header { align-items: flex-start; }
+  .status-wrap { align-items: flex-end; }
+  .sample-row { align-items: flex-start; flex-direction: column; gap: 9px; }
+  .sample-controls { width: 100%; }
+  .sample-button { flex: 1; justify-content: center; }
+}
+@media (max-width: 520px) {
+  .workspace-header { gap: 16px; flex-direction: column; }
+  .status-wrap { align-items: flex-start; }
+  .sample-controls { flex-direction: column; }
+  .sample-button { justify-content: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}

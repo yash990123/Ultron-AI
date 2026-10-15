@@ -21,7 +21,7 @@ GEMINI_API_KEY=your_key
 GEMINI_MODEL=gemini-1.5-flash
 ```
 
-When configured, `POST /api/process` asks Gemini for the extraction contract and still applies ULTRON's local trusted-vendor, amount, and purchase-order guardrails before any action is permitted. Uploads accept selectable-text PDFs, which are extracted by `POST /api/extract` before entering the same normalization flow. Scanned/image-only PDFs should be OCR'd first or pasted as text.
+When configured, `POST /api/process` asks Gemini for the extraction contract and still applies ULTRON's local trusted-vendor, amount, and purchase-order guardrails before any action is permitted. Uploads accept selectable-text PDFs, which are extracted by `POST /api/extract` before entering the same normalization flow. PDF extraction validates invoice/bill language, commercial fields, and an amount before loading the document; non-invoice PDFs return `Invoice or bill not found`. Scanned/image-only PDFs should be OCR'd first or pasted as text.
 
 ## Workflow boundaries
 
